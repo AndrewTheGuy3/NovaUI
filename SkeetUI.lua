@@ -1,7 +1,7 @@
 --[[
 	SkeetUI — gamesense/skeet-style UI library for Roblox executors
 	Author: built for zenn
-	Version: 2.0.0
+	Version: 2.1.0 (pixel-matched to reference screenshot)
 	Font: Verdana Bold requested — Roblox has no Verdana, so Arial Bold
 	      (the closest built-in metric match) is used everywhere.
 
@@ -29,27 +29,30 @@ local Library = {
 	ToggleKey   = Enum.KeyCode.Delete, -- skeet uses DEL
 }
 
---// Theme (sampled from reference screenshots)
+--// Theme (pixel-sampled from the reference screenshot)
 local Theme = {
-	Sidebar      = Color3.fromRGB(10, 10, 10),
-	SidebarTab   = Color3.fromRGB(13, 13, 13),
-	SidebarOn    = Color3.fromRGB(22, 22, 22),
-	Content      = Color3.fromRGB(22, 22, 22),
-	Groupbox     = Color3.fromRGB(28, 28, 28),
-	Element      = Color3.fromRGB(31, 31, 31),
-	ElementDark  = Color3.fromRGB(24, 24, 24),
-	ElementHover = Color3.fromRGB(38, 38, 38),
-	BorderDark   = Color3.fromRGB(5, 5, 5),
+	Sidebar      = Color3.fromRGB(12, 12, 12),
+	SidebarTab   = Color3.fromRGB(12, 12, 12),
+	SidebarOn    = Color3.fromRGB(17, 17, 17),
+	Content      = Color3.fromRGB(17, 17, 17),
+	Groupbox     = Color3.fromRGB(17, 17, 17),  -- same as content; only border differs
+	Element      = Color3.fromRGB(35, 35, 35),  -- dropdown/button fill
+	ElementDark  = Color3.fromRGB(35, 35, 35),
+	ElementHover = Color3.fromRGB(42, 42, 42),
+	BorderDark   = Color3.fromRGB(0, 0, 0),
 	BorderLight  = Color3.fromRGB(48, 48, 48),
-	CheckOff     = Color3.fromRGB(45, 45, 45),
-	Track        = Color3.fromRGB(40, 40, 40),
-	Text         = Color3.fromRGB(200, 200, 200),
-	TextDark     = Color3.fromRGB(120, 120, 120),
+	CheckOffTop  = Color3.fromRGB(76, 76, 76),  -- checkbox-off gradient top
+	CheckOffBot  = Color3.fromRGB(49, 49, 49),  -- checkbox-off gradient bottom
+	Track        = Color3.fromRGB(1, 1, 1),     -- slider empty track (near black)
+	Text         = Color3.fromRGB(210, 210, 210),
+	TextDark     = Color3.fromRGB(97, 97, 97),  -- keybind tags [M5]
 	TextDisabled = Color3.fromRGB(90, 90, 90),
-	Accent       = Color3.fromRGB(160, 204, 31),  -- skeet lime green
-	AccentDark   = Color3.fromRGB(110, 143, 27),
+	Accent       = Color3.fromRGB(149, 184, 45),   -- lime for active labels
+	AccentTop    = Color3.fromRGB(161, 191, 74),   -- slider/checkbox fill gradient top
+	AccentBot    = Color3.fromRGB(105, 141, 31),   -- slider/checkbox fill gradient bottom
 	Error        = Color3.fromRGB(224, 82, 82),
 }
+Theme.CheckOff = Theme.CheckOffBot
 Library.Theme = Theme
 
 --// Font: Verdana Bold requested; Arial Bold is the closest Roblox built-in.
@@ -84,7 +87,7 @@ local function Create(class, props, children)
 	return inst
 end
 
--- skeet-style double border: dark outline + subtle inner highlight
+-- skeet-style double border: 1px pure-black outline + 1px (48,48,48) inner line
 local function DoubleBorder(inst)
 	Create("UIStroke", {
 		Color = Theme.BorderDark,
@@ -102,7 +105,7 @@ local function DoubleBorder(inst)
 	Create("UIStroke", {
 		Color = Theme.BorderLight,
 		Thickness = 1,
-		Transparency = 0.55,
+		Transparency = 0,
 		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 		Parent = inner,
 	})
@@ -148,10 +151,16 @@ end
 local function AccentGradient(parent)
 	return Create("UIGradient", {
 		Rotation = 90,
-		Color = ColorSequence.new(
-			Color3.fromRGB(174, 220, 40),
-			Color3.fromRGB(110, 143, 27)
-		),
+		Color = ColorSequence.new(Theme.AccentTop, Theme.AccentBot),
+		Parent = parent,
+	})
+end
+
+-- gray vertical gradient used on unchecked checkboxes (76 -> 49)
+local function OffGradient(parent)
+	return Create("UIGradient", {
+		Rotation = 90,
+		Color = ColorSequence.new(Theme.CheckOffTop, Theme.CheckOffBot),
 		Parent = parent,
 	})
 end
@@ -411,7 +420,7 @@ end
 
 function Library:CreateWindow(config)
 	config = config or {}
-	local windowSize = config.Size or UDim2.fromOffset(820, 690)
+	local windowSize = config.Size or UDim2.fromOffset(647, 516)
 	Library.ToggleKey = config.ToggleKey or Library.ToggleKey
 
 	local Window = { Tabs = {}, ActiveTab = nil, Hidden = false }
@@ -495,7 +504,7 @@ function Library:CreateWindow(config)
 				Size = UDim2.fromOffset(34, 34),
 				BackgroundTransparency = 1,
 				Image = icon,
-				ImageColor3 = Theme.TextDark,
+				ImageColor3 = Color3.fromRGB(90, 90, 90),
 				Parent = TabButton,
 			})
 		else
@@ -524,24 +533,26 @@ function Library:CreateWindow(config)
 			Parent = Content,
 		})
 
-		-- two columns
+		-- two columns; groupbox titles hang 7px above the box so give 16px headroom
 		local LeftCol = Create("Frame", {
-			Size = UDim2.new(0.5, -30, 0, 0),
+			Size = UDim2.new(0.5, -28, 0, 0),
 			AutomaticSize = Enum.AutomaticSize.Y,
-			Position = UDim2.new(0, 22, 0, 12),
+			Position = UDim2.new(0, 20, 0, 16),
 			BackgroundTransparency = 1,
 			Parent = Page,
 		}, {
-			Create("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 16) }),
+			Create("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 18) }),
+			Create("UIPadding", { PaddingBottom = UDim.new(0, 20) }),
 		})
 		local RightCol = Create("Frame", {
-			Size = UDim2.new(0.5, -30, 0, 0),
+			Size = UDim2.new(0.5, -28, 0, 0),
 			AutomaticSize = Enum.AutomaticSize.Y,
-			Position = UDim2.new(0.5, 8, 0, 12),
+			Position = UDim2.new(0.5, 4, 0, 16),
 			BackgroundTransparency = 1,
 			Parent = Page,
 		}, {
-			Create("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 16) }),
+			Create("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 18) }),
+			Create("UIPadding", { PaddingBottom = UDim.new(0, 20) }),
 		})
 
 		local function SelectTab()
@@ -549,9 +560,9 @@ function Library:CreateWindow(config)
 				other.Page.Visible = false
 				Tween(other.Button, TWEEN_FAST, { BackgroundTransparency = 1 })
 				if other.Icon:IsA("ImageLabel") then
-					Tween(other.Icon, TWEEN_FAST, { ImageColor3 = Theme.TextDark })
+					Tween(other.Icon, TWEEN_FAST, { ImageColor3 = Color3.fromRGB(90, 90, 90) })
 				else
-					Tween(other.Icon, TWEEN_FAST, { TextColor3 = Theme.TextDark })
+					Tween(other.Icon, TWEEN_FAST, { TextColor3 = Color3.fromRGB(90, 90, 90) })
 				end
 			end
 			Page.Visible = true
@@ -577,9 +588,9 @@ function Library:CreateWindow(config)
 		Connect(TabButton.MouseLeave, function()
 			if Window.ActiveTab ~= Tab then
 				if iconInst:IsA("ImageLabel") then
-					Tween(iconInst, TWEEN_FAST, { ImageColor3 = Theme.TextDark })
+					Tween(iconInst, TWEEN_FAST, { ImageColor3 = Color3.fromRGB(90, 90, 90) })
 				else
-					Tween(iconInst, TWEEN_FAST, { TextColor3 = Theme.TextDark })
+					Tween(iconInst, TWEEN_FAST, { TextColor3 = Color3.fromRGB(90, 90, 90) })
 				end
 			end
 		end)
@@ -609,13 +620,13 @@ function Library:CreateWindow(config)
 			})
 			DoubleBorder(Box)
 
-			-- title patch sits on the top border
+			-- title patch sits ON the top border line, like the reference
 			local titleLabel = Text({
 				Size = UDim2.new(0, 0, 0, 14),
 				AutomaticSize = Enum.AutomaticSize.X,
 				Position = UDim2.new(0, 12, 0, -7),
 				Text = " " .. title .. " ",
-				TextColor3 = Color3.fromRGB(219, 219, 219),
+				TextColor3 = Color3.fromRGB(205, 205, 205),
 				TextSize = 12,
 				BackgroundTransparency = 0,
 				BackgroundColor3 = Theme.Content,
@@ -624,15 +635,16 @@ function Library:CreateWindow(config)
 			})
 			titleLabel.BorderSizePixel = 0
 
+			-- elements start 20px in from the box edge (checkbox at x+20 in reference)
 			local Inner = Create("Frame", {
-				Size = UDim2.new(1, -28, 0, 0),
+				Size = UDim2.new(1, -40, 0, 0),
 				AutomaticSize = Enum.AutomaticSize.Y,
-				Position = UDim2.new(0, 14, 0, 16),
+				Position = UDim2.new(0, 20, 0, 18),
 				BackgroundTransparency = 1,
 				Parent = Box,
 			}, {
-				Create("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 7) }),
-				Create("UIPadding", { PaddingBottom = UDim.new(0, 18) }),
+				Create("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 6) }),
+				Create("UIPadding", { PaddingBottom = UDim.new(0, 14) }),
 			})
 
 			Groupbox.Frame = Inner
@@ -699,22 +711,25 @@ function Library._AttachComponents(Groupbox)
 			Parent = Frame,
 		})
 
+		-- 8x8 interior + 1px black outline = 10px like the reference
 		local box = Create("Frame", {
-			Position = UDim2.new(0, 0, 0.5, -4),
+			Position = UDim2.new(0, 1, 0.5, -4),
 			Size = UDim2.fromOffset(8, 8),
-			BackgroundColor3 = state and Theme.Accent or Theme.CheckOff,
+			BackgroundColor3 = Color3.new(1, 1, 1),
 			BorderSizePixel = 0,
 			Parent = row,
 		})
 		Create("UIStroke", { Color = Theme.BorderDark, Thickness = 1, Parent = box })
-		local grad = AccentGradient(box)
-		grad.Enabled = state
+		local onGrad = AccentGradient(box)
+		local offGrad = OffGradient(box)
+		onGrad.Enabled = state
+		offGrad.Enabled = not state
 
 		local label = Text({
 			Size = UDim2.new(1, -70, 1, 0),
-			Position = UDim2.new(0, 16, 0, 0),
+			Position = UDim2.new(0, 20, 0, 0),
 			Text = config.Title or "Checkbox",
-			TextColor3 = state and Theme.Text or Theme.Text,
+			TextColor3 = state and Theme.Accent or Theme.Text,
 			Parent = row,
 		})
 
@@ -735,9 +750,16 @@ function Library._AttachComponents(Groupbox)
 		local item = {}
 		local fire = RegisterFlag(config.Flag, item, state, config.Callback)
 
+		local hovering = false
 		local function Render()
-			box.BackgroundColor3 = state and Theme.Accent or Theme.CheckOff
-			grad.Enabled = state
+			onGrad.Enabled = state
+			offGrad.Enabled = not state
+			-- enabled items show a lime label, exactly like "Remove spread"
+			if state then
+				label.TextColor3 = Theme.Accent
+			else
+				label.TextColor3 = hovering and Color3.new(1, 1, 1) or Theme.Text
+			end
 		end
 
 		Connect(row.MouseButton1Click, function()
@@ -746,10 +768,12 @@ function Library._AttachComponents(Groupbox)
 			fire(state)
 		end)
 		Connect(row.MouseEnter, function()
-			Tween(label, TWEEN_FAST, { TextColor3 = Color3.new(1, 1, 1) })
+			hovering = true
+			Render()
 		end)
 		Connect(row.MouseLeave, function()
-			Tween(label, TWEEN_FAST, { TextColor3 = Theme.Text })
+			hovering = false
+			Render()
 		end)
 
 		if bindKey then
@@ -787,23 +811,28 @@ function Library._AttachComponents(Groupbox)
 		local value  = math.clamp(config.Default or min, min, max)
 		local suffix = config.Suffix or ""
 
+		-- extra 10px under the bar for the inline value text ("90%")
 		local holder = Create("Frame", {
-			Size = UDim2.new(1, 0, 0, config.Title and 30 or 14),
+			Size = UDim2.new(1, 0, 0, config.Title and 38 or 22),
 			BackgroundTransparency = 1,
 			Parent = Frame,
 		})
 
+		-- sub-elements are indented 20px to align with checkbox labels
+		local indent = (config.Indent ~= false) and 20 or 0
+
 		if config.Title then
 			Text({
-				Size = UDim2.new(1, 0, 0, 14),
+				Size = UDim2.new(1, -indent, 0, 14),
+				Position = UDim2.new(0, indent, 0, 0),
 				Text = config.Title,
 				Parent = holder,
 			})
 		end
 
 		local bar = Create("Frame", {
-			Size = UDim2.new(1, -4, 0, 7),
-			Position = UDim2.new(0, 1, 1, -9),
+			Size = UDim2.new(1, -indent - 2, 0, 7),
+			Position = UDim2.new(0, indent + 1, 1, -19),
 			BackgroundColor3 = Theme.Track,
 			BorderSizePixel = 0,
 			Parent = holder,
@@ -818,12 +847,15 @@ function Library._AttachComponents(Groupbox)
 		})
 		AccentGradient(fill)
 
+		-- value text sits just under the bar at the end of the fill, like "90%" in the reference
 		local valueLabel = Text({
+			AnchorPoint = Vector2.new(0.5, 0),
 			Size = UDim2.fromOffset(70, 12),
-			Position = UDim2.new((value - min) / math.max(max - min, 1e-9), -20, 1, 0),
+			Position = UDim2.new((value - min) / math.max(max - min, 1e-9), 0, 1, -2),
 			Text = tostring(value) .. suffix,
 			TextColor3 = Theme.Text,
 			TextSize = 11,
+			TextXAlignment = Enum.TextXAlignment.Center,
 			ZIndex = 3,
 			Parent = bar,
 		})
@@ -843,7 +875,9 @@ function Library._AttachComponents(Groupbox)
 			value = v
 			local alpha = (max == min) and 0 or (value - min) / (max - min)
 			fill.Size = UDim2.new(alpha, 0, 1, 0)
-			valueLabel.Position = UDim2.new(alpha, alpha > 0.85 and -55 or -10, 1, 0)
+			local xOff = 0
+			if alpha < 0.08 then xOff = 14 elseif alpha > 0.92 then xOff = -20 end
+			valueLabel.Position = UDim2.new(alpha, xOff, 1, -2)
 			valueLabel.Text = tostring(value) .. suffix
 			if not skip then fire(value) end
 		end
@@ -890,30 +924,36 @@ function Library._AttachComponents(Groupbox)
 			for _, v in ipairs(config.Default) do selected[v] = true end
 		end
 
+		-- sub-elements are indented 20px to align with checkbox labels
+		local indent = (config.Indent ~= false) and 20 or 0
+		local baseHeight = config.Title and 36 or 18
+
 		local holder = Create("Frame", {
-			Size = UDim2.new(1, 0, 0, config.Title and 38 or 20),
+			Size = UDim2.new(1, 0, 0, baseHeight),
 			BackgroundTransparency = 1,
 			Parent = Frame,
 		})
 
 		if config.Title then
 			Text({
-				Size = UDim2.new(1, 0, 0, 14),
+				Size = UDim2.new(1, -indent, 0, 14),
+				Position = UDim2.new(0, indent, 0, 0),
 				Text = config.Title,
 				Parent = holder,
 			})
 		end
 
+		-- 17px tall, (35,35,35) fill, 1px black border like the reference
 		local display = Create("TextButton", {
-			Size = UDim2.new(1, -4, 0, 20),
-			Position = UDim2.new(0, 1, 1, -21),
-			BackgroundColor3 = Theme.ElementDark,
+			Size = UDim2.new(1, -indent - 2, 0, 17),
+			Position = UDim2.new(0, indent + 1, 1, -18),
+			BackgroundColor3 = Theme.Element,
 			BorderSizePixel = 0,
 			Text = "",
 			AutoButtonColor = false,
 			Parent = holder,
 		})
-		DoubleBorder(display)
+		Create("UIStroke", { Color = Theme.BorderDark, Thickness = 1, Parent = display })
 
 		local function GetDisplayText()
 			if multi then
@@ -930,7 +970,7 @@ function Library._AttachComponents(Groupbox)
 			Size = UDim2.new(1, -28, 1, 0),
 			Position = UDim2.new(0, 8, 0, 0),
 			Text = GetDisplayText(),
-			TextColor3 = Theme.Text,
+			TextColor3 = Color3.fromRGB(154, 154, 154),
 			TextSize = 11,
 			TextTruncate = Enum.TextTruncate.AtEnd,
 			Parent = display,
@@ -949,8 +989,8 @@ function Library._AttachComponents(Groupbox)
 
 		local open = false
 		local listFrame = Create("ScrollingFrame", {
-			Size = UDim2.new(1, -4, 0, 0),
-			Position = UDim2.new(0, 1, 1, 1),
+			Size = UDim2.new(1, -indent - 2, 0, 0),
+			Position = UDim2.new(0, indent + 1, 1, 1),
 			BackgroundColor3 = Theme.ElementDark,
 			BorderSizePixel = 0,
 			ScrollBarThickness = 3,
@@ -976,8 +1016,8 @@ function Library._AttachComponents(Groupbox)
 			for _, opt in ipairs(options) do
 				local isSel = multi and selected[opt] or selected == opt
 				local optBtn = Create("TextButton", {
-					Size = UDim2.new(1, 0, 0, 22),
-					BackgroundColor3 = isSel and Theme.Element or Theme.ElementDark,
+					Size = UDim2.new(1, 0, 0, 18),
+					BackgroundColor3 = isSel and Theme.ElementHover or Theme.Element,
 					BorderSizePixel = 0,
 					Font = FONT,
 					Text = "",
@@ -989,7 +1029,7 @@ function Library._AttachComponents(Groupbox)
 					Size = UDim2.new(1, -16, 1, 0),
 					Position = UDim2.new(0, 8, 0, 0),
 					Text = opt,
-					TextColor3 = isSel and Theme.Accent or Theme.Text,
+					TextColor3 = isSel and Theme.Accent or Color3.fromRGB(154, 154, 154),
 					TextSize = 11,
 					ZIndex = 12,
 					Parent = optBtn,
@@ -998,7 +1038,7 @@ function Library._AttachComponents(Groupbox)
 					Tween(optBtn, TWEEN_FAST, { BackgroundColor3 = Theme.ElementHover })
 				end)
 				Connect(optBtn.MouseLeave, function()
-					Tween(optBtn, TWEEN_FAST, { BackgroundColor3 = (multi and selected[opt] or selected == opt) and Theme.Element or Theme.ElementDark })
+					Tween(optBtn, TWEEN_FAST, { BackgroundColor3 = (multi and selected[opt] or selected == opt) and Theme.ElementHover or Theme.Element })
 				end)
 				Connect(optBtn.MouseButton1Click, function()
 					if multi then
@@ -1012,7 +1052,7 @@ function Library._AttachComponents(Groupbox)
 					if not multi then
 						open = false
 						listFrame.Visible = false
-						holder.Size = UDim2.new(1, 0, 0, config.Title and 38 or 20)
+						holder.Size = UDim2.new(1, 0, 0, baseHeight)
 						arrow.Text = "▼"
 					end
 				end)
@@ -1026,13 +1066,13 @@ function Library._AttachComponents(Groupbox)
 			arrow.Text = open and "▲" or "▼"
 			if open then
 				RenderOptions()
-				local h = math.min(#options * 22, LIST_MAX)
-				listFrame.Size = UDim2.new(1, -4, 0, h)
+				local h = math.min(#options * 18, LIST_MAX)
+				listFrame.Size = UDim2.new(1, -indent - 2, 0, h)
 				listFrame.Visible = true
-				holder.Size = UDim2.new(1, 0, 0, (config.Title and 38 or 20) + h + 2)
+				holder.Size = UDim2.new(1, 0, 0, baseHeight + h + 2)
 			else
 				listFrame.Visible = false
-				holder.Size = UDim2.new(1, 0, 0, config.Title and 38 or 20)
+				holder.Size = UDim2.new(1, 0, 0, baseHeight)
 			end
 		end)
 
@@ -1080,7 +1120,7 @@ function Library._AttachComponents(Groupbox)
 		if config.Title then
 			Text({ Size = UDim2.new(1, 0, 0, 14), Text = config.Title, Parent = holder })
 		end
-		local boxHolder, box = FlatTextbox(holder, UDim2.new(1, -4, 0, 20), UDim2.new(0, 1, 1, -21), config.Placeholder)
+		local _boxHolder, box = FlatTextbox(holder, UDim2.new(1, -4, 0, 20), UDim2.new(0, 1, 1, -21), config.Placeholder)
 		box.Text = config.Default or ""
 
 		local item = {}
