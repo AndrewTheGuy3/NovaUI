@@ -1,7 +1,7 @@
 --[[
 	NovaUI — Modern dark-themed UI library for Roblox executors
 	Author: built for zenn
-	Version: 1.0.0
+	Version: 1.1.0
 
 	Usage:
 		local Nova = loadstring(game:HttpGet("<raw url>/NovaUI.lua"))()
@@ -256,6 +256,426 @@ function Library:Notify(config)
 	end)
 end
 
+--// Confirmation dialog -----------------------------------------------------
+
+function Library:Confirm(config)
+	config = config or {}
+	local title    = config.Title or "Confirm"
+	local content  = config.Content or "Are you sure?"
+	local yesText  = config.YesText or "Yes"
+	local noText   = config.NoText or "No"
+	local callback = config.Callback -- function(confirmed: boolean)
+
+	-- dimmed backdrop blocks input behind the dialog
+	local backdrop = Create("TextButton", {
+		Name = "ConfirmBackdrop",
+		Size = UDim2.new(1, 0, 1, 0),
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		BackgroundTransparency = 1,
+		Text = "",
+		AutoButtonColor = false,
+		ZIndex = 50,
+		Parent = ScreenGui,
+	})
+	Tween(backdrop, TWEEN_MED, { BackgroundTransparency = 0.45 })
+
+	local dialog = Create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+		Size = UDim2.fromOffset(300, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundColor3 = Theme.Secondary,
+		BackgroundTransparency = 1,
+		ZIndex = 51,
+		Parent = backdrop,
+	})
+	Round(dialog, 10)
+	local dialogStroke = Stroke(dialog, Theme.StrokeLight)
+	dialogStroke.Transparency = 1
+	Padding(dialog, 16, 16, 16, 16)
+
+	local titleLabel = Create("TextLabel", {
+		Size = UDim2.new(1, 0, 0, 18),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.GothamBold,
+		Text = title,
+		TextColor3 = Theme.Text,
+		TextTransparency = 1,
+		TextSize = 14,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = 52,
+		Parent = dialog,
+	})
+
+	local contentLabel = Create("TextLabel", {
+		Size = UDim2.new(1, 0, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		Position = UDim2.new(0, 0, 0, 24),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.Gotham,
+		Text = content,
+		TextColor3 = Theme.SubText,
+		TextTransparency = 1,
+		TextSize = 12,
+		TextWrapped = true,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = 52,
+		Parent = dialog,
+	})
+
+	local buttonRow = Create("Frame", {
+		Size = UDim2.new(1, 0, 0, 32),
+		Position = UDim2.new(0, 0, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.None,
+		BackgroundTransparency = 1,
+		ZIndex = 52,
+		Parent = dialog,
+	}, {
+		Create("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Right,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+			SortOrder = Enum.SortOrder.LayoutOrder,
+			Padding = UDim.new(0, 8),
+		}),
+	})
+	-- place the row below the content using a layout inside the dialog
+	Create("UIListLayout", {
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Padding = UDim.new(0, 12),
+		Parent = dialog,
+	})
+	titleLabel.LayoutOrder = 1
+	contentLabel.LayoutOrder = 2
+	contentLabel.Position = UDim2.new(0, 0, 0, 0)
+	buttonRow.LayoutOrder = 3
+
+	local closed = false
+	local function CloseDialog(confirmed)
+		if closed then return end
+		closed = true
+		Tween(backdrop, TWEEN_MED, { BackgroundTransparency = 1 })
+		Tween(dialog, TWEEN_MED, { BackgroundTransparency = 1 })
+		Tween(dialogStroke, TWEEN_MED, { Transparency = 1 })
+		Tween(titleLabel, TWEEN_MED, { TextTransparency = 1 })
+		local t = Tween(contentLabel, TWEEN_MED, { TextTransparency = 1 })
+		for _, d in ipairs(buttonRow:GetChildren()) do
+			if d:IsA("TextButton") then
+				Tween(d, TWEEN_MED, { BackgroundTransparency = 1, TextTransparency = 1 })
+			end
+		end
+		task.delay(0.25, function()
+			backdrop:Destroy()
+		end)
+		if callback then task.spawn(callback, confirmed) end
+	end
+
+	local function DialogButton(text, accent, confirmed, order)
+		local btn = Create("TextButton", {
+			Size = UDim2.fromOffset(76, 30),
+			BackgroundColor3 = accent and Theme.Accent or Theme.Tertiary,
+			BackgroundTransparency = 1,
+			Font = Enum.Font.GothamBold,
+			Text = text,
+			TextColor3 = accent and Theme.Text or Theme.SubText,
+			TextTransparency = 1,
+			TextSize = 12,
+			AutoButtonColor = false,
+			ZIndex = 53,
+			LayoutOrder = order,
+			Parent = buttonRow,
+		})
+		Round(btn, 6)
+		Connect(btn.MouseEnter, function()
+			Tween(btn, TWEEN_FAST, { BackgroundColor3 = accent and Theme.AccentDim or Theme.ElementHover })
+		end)
+		Connect(btn.MouseLeave, function()
+			Tween(btn, TWEEN_FAST, { BackgroundColor3 = accent and Theme.Accent or Theme.Tertiary })
+		end)
+		Connect(btn.MouseButton1Click, function()
+			CloseDialog(confirmed)
+		end)
+		Tween(btn, TWEEN_MED, { BackgroundTransparency = 0, TextTransparency = 0 })
+		return btn
+	end
+
+	DialogButton(noText, false, false, 1)
+	DialogButton(yesText, true, true, 2)
+
+	-- animate in
+	Tween(dialog, TWEEN_MED, { BackgroundTransparency = 0 })
+	Tween(dialogStroke, TWEEN_MED, { Transparency = 0 })
+	Tween(titleLabel, TWEEN_MED, { TextTransparency = 0 })
+	Tween(contentLabel, TWEEN_MED, { TextTransparency = 0.15 })
+end
+
+--// Key system ----------------------------------------------------------------
+
+function Library:CreateKeySystem(config)
+	config = config or {}
+	local title      = config.Title or "Key System"
+	local subTitle   = config.SubTitle or "Enter your key to continue"
+	local keys       = config.Keys or {}          -- list of valid keys
+	local keyLink    = config.KeyLink              -- optional "Get Key" URL
+	local saveKey    = config.SaveKey ~= false     -- remember valid key via writefile
+	local fileName   = config.FileName or "NovaUI_Key.txt"
+	local onSuccess  = config.Callback             -- called once key is valid
+	local maxAttempts = config.MaxAttempts         -- optional attempt limit
+
+	local function IsValidKey(input)
+		if config.Validator then
+			local ok, res = pcall(config.Validator, input)
+			return ok and res == true
+		end
+		for _, k in ipairs(keys) do
+			if input == k then return true end
+		end
+		return false
+	end
+
+	-- check saved key first
+	if saveKey and readfile and isfile then
+		local ok, saved = pcall(readfile, fileName)
+		if ok and saved and pcall(isfile, fileName) and IsValidKey(saved) then
+			if onSuccess then task.spawn(onSuccess) end
+			return
+		end
+	end
+
+	local attempts = 0
+
+	local KeyFrame = Create("Frame", {
+		Name = "KeySystem",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+		Size = UDim2.fromOffset(320, 190),
+		BackgroundColor3 = Theme.Background,
+		ZIndex = 40,
+		Parent = ScreenGui,
+	})
+	Round(KeyFrame, 10)
+	Stroke(KeyFrame, Theme.Stroke)
+
+	Create("ImageLabel", {
+		Name = "Shadow",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 4),
+		Size = UDim2.new(1, 40, 1, 40),
+		BackgroundTransparency = 1,
+		Image = "rbxassetid://6015897843",
+		ImageColor3 = Color3.new(0, 0, 0),
+		ImageTransparency = 0.45,
+		ScaleType = Enum.ScaleType.Slice,
+		SliceCenter = Rect.new(49, 49, 450, 450),
+		ZIndex = 39,
+		Parent = KeyFrame,
+	})
+
+	local KeyTitleBar = Create("Frame", {
+		Size = UDim2.new(1, 0, 0, 42),
+		BackgroundTransparency = 1,
+		ZIndex = 41,
+		Parent = KeyFrame,
+	})
+
+	Create("TextLabel", {
+		Size = UDim2.new(1, -60, 0, 16),
+		Position = UDim2.new(0, 16, 0, 8),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.GothamBold,
+		Text = title,
+		TextColor3 = Theme.Text,
+		TextSize = 14,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = 42,
+		Parent = KeyTitleBar,
+	})
+
+	Create("TextLabel", {
+		Size = UDim2.new(1, -60, 0, 12),
+		Position = UDim2.new(0, 16, 0, 24),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.Gotham,
+		Text = subTitle,
+		TextColor3 = Theme.SubText,
+		TextSize = 11,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = 42,
+		Parent = KeyTitleBar,
+	})
+
+	local KeyCloseBtn = Create("TextButton", {
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -12, 0.5, 0),
+		Size = UDim2.fromOffset(26, 26),
+		BackgroundColor3 = Theme.Tertiary,
+		Font = Enum.Font.GothamBold,
+		Text = "X",
+		TextColor3 = Theme.SubText,
+		TextSize = 12,
+		AutoButtonColor = false,
+		ZIndex = 42,
+		Parent = KeyTitleBar,
+	})
+	Round(KeyCloseBtn, 6)
+	Connect(KeyCloseBtn.MouseEnter, function()
+		Tween(KeyCloseBtn, TWEEN_FAST, { BackgroundColor3 = Theme.ElementHover, TextColor3 = Theme.Text })
+	end)
+	Connect(KeyCloseBtn.MouseLeave, function()
+		Tween(KeyCloseBtn, TWEEN_FAST, { BackgroundColor3 = Theme.Tertiary, TextColor3 = Theme.SubText })
+	end)
+
+	MakeDraggable(KeyTitleBar, KeyFrame)
+
+	Create("Frame", {
+		Size = UDim2.new(1, -24, 0, 1),
+		Position = UDim2.new(0, 12, 0, 42),
+		BackgroundColor3 = Theme.Stroke,
+		BorderSizePixel = 0,
+		ZIndex = 41,
+		Parent = KeyFrame,
+	})
+
+	local inputHolder = Create("Frame", {
+		Position = UDim2.new(0, 16, 0, 56),
+		Size = UDim2.new(1, -32, 0, 32),
+		BackgroundColor3 = Theme.Tertiary,
+		ZIndex = 41,
+		Parent = KeyFrame,
+	})
+	Round(inputHolder, 6)
+	local inputStroke = Stroke(inputHolder, Theme.StrokeLight)
+
+	local keyBox = Create("TextBox", {
+		Size = UDim2.new(1, -20, 1, 0),
+		Position = UDim2.new(0, 10, 0, 0),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.Gotham,
+		PlaceholderText = "Enter key...",
+		PlaceholderColor3 = Theme.SubText,
+		Text = "",
+		TextColor3 = Theme.Text,
+		TextSize = 12,
+		ClearTextOnFocus = false,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = 42,
+		Parent = inputHolder,
+	})
+
+	local statusLabel = Create("TextLabel", {
+		Position = UDim2.new(0, 16, 0, 92),
+		Size = UDim2.new(1, -32, 0, 14),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.Gotham,
+		Text = "",
+		TextColor3 = Theme.Error,
+		TextSize = 11,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = 41,
+		Parent = KeyFrame,
+	})
+
+	local function KeyActionButton(text, accent, xScale, xOffset)
+		local btn = Create("TextButton", {
+			Position = UDim2.new(xScale, xOffset, 1, -46),
+			Size = UDim2.new(0.5, -22, 0, 32),
+			BackgroundColor3 = accent and Theme.Accent or Theme.Tertiary,
+			Font = Enum.Font.GothamBold,
+			Text = text,
+			TextColor3 = accent and Theme.Text or Theme.SubText,
+			TextSize = 12,
+			AutoButtonColor = false,
+			ZIndex = 41,
+			Parent = KeyFrame,
+		})
+		Round(btn, 6)
+		Connect(btn.MouseEnter, function()
+			Tween(btn, TWEEN_FAST, { BackgroundColor3 = accent and Theme.AccentDim or Theme.ElementHover })
+		end)
+		Connect(btn.MouseLeave, function()
+			Tween(btn, TWEEN_FAST, { BackgroundColor3 = accent and Theme.Accent or Theme.Tertiary })
+		end)
+		return btn
+	end
+
+	local submitBtn = KeyActionButton("Submit", true, 0.5, 6)
+	local getKeyBtn = KeyActionButton("Get Key", false, 0, 16)
+
+	local function Shake()
+		local original = KeyFrame.Position
+		for i = 1, 3 do
+			Tween(KeyFrame, TweenInfo.new(0.04), { Position = original + UDim2.fromOffset(6, 0) }).Completed:Wait()
+			Tween(KeyFrame, TweenInfo.new(0.04), { Position = original - UDim2.fromOffset(6, 0) }).Completed:Wait()
+		end
+		Tween(KeyFrame, TweenInfo.new(0.04), { Position = original })
+	end
+
+	local function Submit()
+		local input = keyBox.Text
+		if IsValidKey(input) then
+			Tween(inputStroke, TWEEN_FAST, { Color = Theme.Success })
+			statusLabel.TextColor3 = Theme.Success
+			statusLabel.Text = "Key accepted!"
+			if saveKey and writefile then
+				pcall(writefile, fileName, input)
+			end
+			task.delay(0.4, function()
+				KeyFrame:Destroy()
+				if onSuccess then task.spawn(onSuccess) end
+			end)
+		else
+			attempts += 1
+			Tween(inputStroke, TWEEN_FAST, { Color = Theme.Error })
+			statusLabel.TextColor3 = Theme.Error
+			statusLabel.Text = "Invalid key." .. (maxAttempts and (" Attempt " .. attempts .. "/" .. maxAttempts) or "")
+			task.spawn(Shake)
+			task.delay(0.6, function()
+				Tween(inputStroke, TWEEN_FAST, { Color = Theme.StrokeLight })
+			end)
+			if maxAttempts and attempts >= maxAttempts then
+				statusLabel.Text = "Too many attempts."
+				task.delay(0.8, function() Library:Unload() end)
+			end
+		end
+	end
+
+	Connect(submitBtn.MouseButton1Click, Submit)
+	Connect(keyBox.FocusLost, function(enterPressed)
+		if enterPressed then Submit() end
+	end)
+
+	Connect(getKeyBtn.MouseButton1Click, function()
+		if keyLink then
+			local copied = pcall(function()
+				local setClipboard = setclipboard or toclipboard
+				setClipboard(keyLink)
+			end)
+			Library:Notify({
+				Title = copied and "Link Copied" or "Get Key",
+				Content = copied and "Key link copied to clipboard." or keyLink,
+				Duration = 4,
+			})
+		else
+			Library:Notify({ Title = "Get Key", Content = "No key link configured.", Duration = 3 })
+		end
+	end)
+
+	Connect(KeyCloseBtn.MouseButton1Click, function()
+		Library:Confirm({
+			Title = "Unload",
+			Content = "Do you wish to unload the interface?",
+			Callback = function(confirmed)
+				if confirmed then Library:Unload() end
+			end,
+		})
+	end)
+
+	-- intro animation
+	KeyFrame.Size = UDim2.fromOffset(320, 0)
+	KeyFrame.BackgroundTransparency = 1
+	Tween(KeyFrame, TWEEN_SLOW, { Size = UDim2.fromOffset(320, 190), BackgroundTransparency = 0 })
+end
+
 --// Window -------------------------------------------------------------------
 
 function Library:CreateWindow(config)
@@ -361,7 +781,13 @@ function Library:CreateWindow(config)
 	local MinBtn   = TitleButton("-", -44)
 
 	Connect(CloseBtn.MouseButton1Click, function()
-		Library:Unload()
+		Library:Confirm({
+			Title = "Unload",
+			Content = "Do you wish to unload the interface?",
+			Callback = function(confirmed)
+				if confirmed then Library:Unload() end
+			end,
+		})
 	end)
 
 	local ContentHolder -- forward declared
